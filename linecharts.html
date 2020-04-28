@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+<link rel="stylesheet" type="text/css" href="linecharts.css">
+<style>
+
+</style>
+<body>
+  <script>
+
+  const margin = {top : 60, right : 80, bottom : 50, left : 80}
+  const width = 960 - margin.left - margin.right
+  const height = 500 - margin.top - margin.bottom
+  var magna_list = ["5_5.9", "6_6.9", "7_7.9", "8.0+"]
+  var color_list = ["#FFC300","#FF5733","#C70039", "#900C3F"]
+
+  var svg1 = d3.select("body")
+              .append("div")
+              .attr("class", "page")
+              .append("svg")
+              .attr("width", width + margin.left + margin.right)
+              .attr("height", height + margin.top + margin.bottom)
+  var g1 = svg1.append("g")
+             .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+  d3.dsv("," , "earthquakes.csv")
+    .then(function(data) {
+      var slices = data.columns.slice(1).map(function(id) {
+        return {
+          id: id,
+          values: data.map(function(d){
+            return{
+              year: new Date(+d.year,0,1),
+              measurement: +d[id]
+            }
+          })
+        }
+      })
+
+      // Create usable data structure that only has Magnitudes
+      var slices_sel = []
+      for (var i = 0; i < slices.length-1; i++) {
+        slices_sel.push(slices[i]);
+      }
+      console.log(slices_sel) // Removes the Estimated Deaths from Array, for YScale
+
+      var xScale = d3.scaleTime()
+                     .domain([d3.min(slices, function(c){
+                         return d3.min(c.values, function(d){
+                           return d.year})
+                       }),
+                       d3.max(slices, function(c){
+                         return d3.max(c.values, function(d){
+                           return d.year})
+                       })
+                     ])
+                     .range([0, width])
+
+     var yScale = d3.scaleLinear()
+                    .range([height, 0])
+                    .domain([0, d3.max(slices_sel,
+                      function(c) {
+                      return d3.max(c.values,
+                        function(d) {
+                        return d.measurement
+                      })
+                    })])
+
+     // Add Axis Image
+      g1.append("g")
+        .call(d3.axisBottom()
+          .scale(xScale))
+        .attr("transform", "translate(0," + height + ")")
+
+      g1.append("g")
+         .call(d3.axisLeft()
+           .scale(yScale)
+           .ticks(15))
+
+     // Add Axis Titles
+     g1.append("text")
+        .attr("x", width/2)
+        .attr("y", height+margin.bottom)
+        .attr("text-anchor", "middle")
+        .style("font-family", "sans-serif")
+        .style("font-size", "15px")
+        .text("Year")
+      g1.append("text")
+         .attr("x", -(height)/2)
+         .attr("y", -(margin.left/2))
+         .attr("transform", "rotate(-90)")
+         .attr("text-anchor", "middle")
+         .style("font-family", "sans-serif")
+         .style("font-size", "15px")
+         .text("Num of Earthquakes")
+
+    // Add title
+    svg1.append("text")
+         .attr("x", (width+margin.left+margin.right)/2)
+         .attr("y", 0 + margin.top/2)
+         .attr("text-anchor", "middle")
+         .style("font-weight", 700)
+         .style("font-size", "18px")
+         .style("font-family", "sans-serif")
+         .text("Earthquake Statistics for 2000-2015")
+
+     // Create Line Generator
+    var line = d3.line()
+                  .x(function(d) {return xScale(d.year) + margin.left})
+                  .y(function(d) {return yScale(d.measurement) + margin.top })
+    var lines = svg1.selectAll("lines")
+                    .data(slices_sel)
+                    .enter()
+                    .append("g")
+
+    // Each path gets their own class:
+    var id = 0
+    var ids = function () {
+         return "line-"+id++
+    }
+    lines.append("path")
+          .attr("class", ids)
+          .attr("d", function(d) {return line(d.values)})
+
+    // Make Legend
+    var magna_list = ["5_5.9", "6_6.9", "7_7.9", "8.0+"]
+    var color_list = ["#FFC300","#FF5733","#C70039", "#900C3F"]
+    for (var i = 0; i < color_list.length; i++) {
+      g1.append("rect")
+        .attr("x", width + 10)
+        .attr("y", 42 + i*20)
+        .attr("width", 25)
+        .attr("height", 10)
+        .attr("fill", color_list[i])
+      g1.append("text")
+       .attr("x", width + 45)
+       .attr("y", 50 + i*20)
+       .attr("text-anchor", "right")
+       .style("font-size", "12px")
+       .text(magna_list[i])
+    }
+    })
+
+/* -------------------------------PART TWO------------------------------------*/
+
+    var svg2 = d3.select("body")
+                .append("div")
+                .attr("class", "page")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+    var g2 = svg2.append("g")
+               .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+     d3.dsv("," , "earthquakes.csv")
+       .then(function(data) {
+         var slices = data.columns.slice(1).map(function(id) {
+           return {
+             id: id,
+             values: data.map(function(d){
+               return{
+                 year: new Date(+d.year,0,1),
+                 measurement: +d[id]
+               }
+             })
+           }
+         })
+
+         // Create usable data structure that only has Magnitudes - removes deaths
+         var slices_sel = []
+         for (var i = 0; i < slices.length-1; i++) {
+           slices_sel.push(slices[i]);
+         }
+
+         var xScale = d3.scaleTime()
+                        .domain([d3.min(slices, function(c){
+                            return d3.min(c.values, function(d){
+                              return d.year})
+                          }),
+                          d3.max(slices, function(c){
+                            return d3.max(c.values, function(d){
+                              return d.year})
+                          })
+                        ])
+                        .range([0, width])
+
+        var yScale = d3.scaleLinear()
+                       .range([height, 0])
+                       .domain([0, d3.max(slices_sel,
+                         function(c) {
+                         return d3.max(c.values,
+                           function(d) {
+                           return d.measurement
+                         })
+                       })])
+        // Add Axis Image
+         g2.append("g")
+           .call(d3.axisBottom()
+             .scale(xScale))
+           .attr("transform", "translate(0," + height + ")")
+
+         g2.append("g")
+            .call(d3.axisLeft()
+              .scale(yScale)
+              .ticks(15))
+
+        // Add Axis Titles
+        g2.append("text")
+           .attr("x", width/2)
+           .attr("y", height+margin.bottom)
+           .attr("text-anchor", "middle")
+           .style("font-family", "sans-serif")
+           .style("font-size", "15px")
+           .text("Year")
+         g2.append("text")
+            .attr("x", -(height)/2)
+            .attr("y", -(margin.left/2))
+            .attr("transform", "rotate(-90)")
+            .attr("text-anchor", "middle")
+            .style("font-family", "sans-serif")
+            .style("font-size", "15px")
+            .text("Num of Earthquakes")
+
+       // Add title
+       svg2.append("text")
+            .attr("x", (width+margin.left+margin.right)/2)
+            .attr("y", 0 + margin.top/2)
+            .attr("text-anchor", "middle")
+            .style("font-weight", 700)
+            .style("font-size", "18px")
+            .style("font-family", "sans-serif")
+            .text("Earthquake Statistics for 2000-2015 with Symbols")
+
+        // Create Line Generator
+       var line = d3.line()
+                     .x(function(d) {return xScale(d.year) + margin.left})
+                     .y(function(d) {return yScale(d.measurement) + margin.top })
+       var lines = svg2.selectAll("lines")
+                       .data(slices_sel)
+                       .enter()
+                       .append("g")
+
+       // Each path gets their own class:
+       var id = 0
+       var ids = function () {
+            return "line-"+id++
+       }
+       lines.append("path")
+             .attr("class", ids)
+             .attr("d", function(d) {return line(d.values)})
+
+       var deathArray = []
+       for (var i = 0; i < slices[4]["values"].length; i++){
+         deathArray.push(Math.sqrt(slices[4]["values"][i]["measurement"]))
+       }
+
+      for (var i =0; i < slices_sel.length; i ++ ) {
+        for (var j = 0; j < slices_sel[i].values.length; j++){
+          var xval = xScale(slices_sel[i].values[j].year) + margin.left
+          var yval = yScale(slices_sel[i].values[j].measurement) + margin.top
+          var symbolType = [d3.symbolCircle, d3.symbolTriangle, d3.symbolDiamond, d3.symbolSquare]
+            lines.append("path")
+                 .attr("transform", function(d) {
+                    return "translate(" + xval + "," + yval + ")"
+                  })
+                 .attr("d", d3.symbol()
+                              .type(symbolType[slices_sel.length - i - 1])
+                              .size(deathArray[j])
+                  )
+                  .attr("stroke", color_list[slices_sel.length - i - 1])
+                  .attr("fill", color_list[slices_sel.length - i - 1])
+         }
+        }
+
+       // Make Legend
+       for (var i = 0; i < color_list.length; i++) {
+         g2.append("rect")
+           .attr("x", width + 10)
+           .attr("y", 42 + i*20)
+           .attr("width", 25)
+           .attr("height", 10)
+           .attr("fill", color_list[i])
+         g2.append("text")
+          .attr("x", width + 45)
+          .attr("y", 50 + i*20)
+          .attr("text-anchor", "right")
+          .style("font-size", "12px")
+          .text(magna_list[i])
+        }
+       })
+
+
+   /* ------------ PART three ------------*/
+
+   var svg3 = d3.select("body")
+               .append("div")
+               .attr("class", "page")
+               .append("svg")
+               .attr("width", width + margin.left + margin.right)
+               .attr("height", height + margin.top + margin.bottom)
+   var g3 = svg3.append("g")
+              .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+    d3.dsv("," , "earthquakes.csv")
+      .then(function(data) {
+        var slices = data.columns.slice(1).map(function(id) {
+          return {
+            id: id,
+            values: data.map(function(d){
+              return{
+                year: new Date(+d.year,0,1),
+                measurement: +d[id]
+              }
+            })
+          }
+        })
+        console.log(slices)
+        //console.log(slices[0]["values"][0]["measurement"])
+
+        // Create usable data structure that only has Magnitudes
+        var slices_sel = []
+        for (var i = 0; i < slices.length-1; i++) {
+          slices_sel.push(slices[i]);
+        }
+        console.log(slices_sel) // Removes the Estimated Deaths from Array, for YScale
+
+        var xScale = d3.scaleTime()
+                       .domain([d3.min(slices, function(c){
+                           return d3.min(c.values, function(d){
+                             return d.year})
+                         }),
+                         d3.max(slices, function(c){
+                           return d3.max(c.values, function(d){
+                             return d.year})
+                         })
+                       ])
+                       .range([0, width])
+
+
+      var yScale = d3.scaleSqrt()
+                      .range([height, 0])
+                      .domain([0 , d3.max(slices_sel,
+                        function(c) {
+                        return d3.max(c.values,
+                          function(d) {
+                          return d.measurement
+                        })
+                      })])
+
+       // Add Axis Image
+        g3.append("g")
+          .call(d3.axisBottom()
+            .scale(xScale))
+          .attr("transform", "translate(0," + height + ")")
+
+        g3.append("g")
+           .call(d3.axisLeft()
+             .scale(yScale)
+             .ticks(15))
+
+       // Add Axis Titles
+       g3.append("text")
+          .attr("x", width/2)
+          .attr("y", height+margin.bottom)
+          .attr("text-anchor", "middle")
+          .style("font-family", "sans-serif")
+          .style("font-size", "15px")
+          .text("Year")
+        g3.append("text")
+           .attr("x", -(height)/2)
+           .attr("y", -(margin.left/2))
+           .attr("transform", "rotate(-90)")
+           .attr("text-anchor", "middle")
+           .style("font-family", "sans-serif")
+           .style("font-size", "15px")
+           .text("Num of Earthquakes")
+
+      // Add title
+      svg3.append("text")
+           .attr("x", (width+margin.left+margin.right)/2)
+           .attr("y", 0 + margin.top/2)
+           .attr("text-anchor", "middle")
+           .style("font-weight", 700)
+           .style("font-size", "18px")
+           .style("font-family", "sans-serif")
+           .text("Earthquake Statistics for 2000-2015 (Square Root Scale)")
+
+       // Create Line Generator
+      var line = d3.line()
+                    .x(function(d) {return xScale(d.year) + margin.left})
+                    .y(function(d) {return yScale(d.measurement) + margin.top })
+      var lines = svg3.selectAll("lines")
+                      .data(slices_sel)
+                      .enter()
+                      .append("g")
+
+      // Each path gets their own class:
+      var id = 0
+      var ids = function () {
+           return "line-"+id++
+      }
+      lines.append("path")
+            .attr("class", ids)
+            .attr("d", function(d) {return line(d.values)})
+            var deathArray = []
+            for (var i = 0; i < slices[4]["values"].length; i++){
+              deathArray.push(Math.sqrt(slices[4]["values"][i]["measurement"]))
+            }
+
+           for (var i =0; i < slices_sel.length; i ++ ) {
+             for (var j = 0; j < slices_sel[i].values.length; j++){
+               var xval = xScale(slices_sel[i].values[j].year) + margin.left
+               var yval = yScale(slices_sel[i].values[j].measurement) + margin.top
+               var symbolType = [d3.symbolCircle, d3.symbolTriangle, d3.symbolDiamond, d3.symbolSquare]
+                 lines.append("path")
+                      .attr("transform", function(d) {
+                         return "translate(" + xval + "," + yval + ")"
+                       })
+                      .attr("d", d3.symbol()
+                                   .type(symbolType[slices_sel.length - i - 1])
+                                   .size(deathArray[j])
+                       )
+                       .attr("stroke", color_list[slices_sel.length - i - 1])
+                       .attr("fill", color_list[slices_sel.length - i - 1])
+              }
+             }
+
+      // Make Legend
+      for (var i = 0; i < color_list.length; i++) {
+        g3.append("rect")
+          .attr("x", width + 10)
+          .attr("y", 42 + i*20)
+          .attr("width", 25)
+          .attr("height", 10)
+          .attr("fill", color_list[i])
+        g3.append("text")
+         .attr("x", width + 45)
+         .attr("y", 50 + i*20)
+         .attr("text-anchor", "right")
+         .style("font-size", "12px")
+         .text(magna_list[i])
+       }
+
+
+      })
+
+
+   /* ------------ PART FOUR ------------*/
+
+   var svg4 = d3.select("body")
+               .append("div")
+               .attr("class", "page")
+               .append("svg")
+               .attr("width", width + margin.left + margin.right)
+               .attr("height", height + margin.top + margin.bottom)
+   var g4 = svg4.append("g")
+              .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+    d3.dsv("," , "earthquakes.csv")
+      .then(function(data) {
+        var slices = data.columns.slice(1).map(function(id) {
+          return {
+            id: id,
+            values: data.map(function(d){
+              return{
+                year: new Date(+d.year,0,1),
+                measurement: +d[id]
+              }
+            })
+          }
+        })
+        console.log(slices)
+        //console.log(slices[0]["values"][0]["measurement"])
+
+        // Create usable data structure that only has Magnitudes
+        var slices_sel = []
+        for (var i = 0; i < slices.length-1; i++) {
+          slices_sel.push(slices[i]);
+        }
+        console.log(slices_sel) // Removes the Estimated Deaths from Array, for YScale
+
+        var xScale = d3.scaleTime()
+                       .domain([d3.min(slices, function(c){
+                           return d3.min(c.values, function(d){
+                             return d.year})
+                         }),
+                         d3.max(slices, function(c){
+                           return d3.max(c.values, function(d){
+                             return d.year})
+                         })
+                       ])
+                       .range([0, width])
+
+
+
+       var yScale = d3.scaleLog()
+                      .clamp(true)
+                      .range([height, 0])
+                      .domain([0.1 , d3.max(slices_sel,
+                        function(c) {
+                        return d3.max(c.values,
+                          function(d) {
+                          return d.measurement
+                        })
+                      })])
+
+       // Add Axis Image
+        g4.append("g")
+          .call(d3.axisBottom()
+            .scale(xScale))
+          .attr("transform", "translate(0," + height + ")")
+
+        g4.append("g")
+           .call(d3.axisLeft()
+             .scale(yScale)
+             .ticks(15))
+
+       // Add Axis Titles
+       g4.append("text")
+          .attr("x", width/2)
+          .attr("y", height+margin.bottom)
+          .attr("text-anchor", "middle")
+          .style("font-family", "sans-serif")
+          .style("font-size", "15px")
+          .text("Year")
+        g4.append("text")
+           .attr("x", -(height)/2)
+           .attr("y", -(margin.left/2))
+           .attr("transform", "rotate(-90)")
+           .attr("text-anchor", "middle")
+           .style("font-family", "sans-serif")
+           .style("font-size", "15px")
+           .text("Num of Earthquakes")
+
+      // Add title
+      svg4.append("text")
+           .attr("x", (width+margin.left+margin.right)/2)
+           .attr("y", 0 + margin.top/2)
+           .attr("text-anchor", "middle")
+           .style("font-weight", 700)
+           .style("font-size", "18px")
+           .style("font-family", "sans-serif")
+           .text("Earthquake Statistics for 2000-2015 (Log Scale)")
+
+       // Create Line Generator
+      var line = d3.line()
+                    .x(function(d) {return xScale(d.year) + margin.left})
+                    .y(function(d) {return yScale(d.measurement) + margin.top })
+      var lines = svg4.selectAll("lines")
+                      .data(slices_sel)
+                      .enter()
+                      .append("g")
+
+      // Each path gets their own class:
+      var id = 0
+      var ids = function () {
+           return "line-"+id++
+      }
+      lines.append("path")
+            .attr("class", ids)
+            .attr("d", function(d) {return line(d.values)})
+            var deathArray = []
+            for (var i = 0; i < slices[4]["values"].length; i++){
+              deathArray.push(Math.sqrt(slices[4]["values"][i]["measurement"]))
+            }
+
+           for (var i =0; i < slices_sel.length; i ++ ) {
+             for (var j = 0; j < slices_sel[i].values.length; j++){
+               var xval = xScale(slices_sel[i].values[j].year) + margin.left
+               var yval = yScale(slices_sel[i].values[j].measurement) + margin.top
+               var symbolType = [d3.symbolCircle, d3.symbolTriangle, d3.symbolDiamond, d3.symbolSquare]
+                 lines.append("path")
+                      .attr("transform", function(d) {
+                         return "translate(" + xval + "," + yval + ")"
+                       })
+                      .attr("d", d3.symbol()
+                                   .type(symbolType[slices_sel.length - i - 1])
+                                   .size(deathArray[j])
+                       )
+                       .attr("stroke", color_list[slices_sel.length - i - 1])
+                       .attr("fill", color_list[slices_sel.length - i - 1])
+              }
+             }
+
+      // Make Legend
+      for (var i = 0; i < color_list.length; i++) {
+        g4.append("rect")
+          .attr("x", width + 10)
+          .attr("y", 42 + i*20)
+          .attr("width", 25)
+          .attr("height", 10)
+          .attr("fill", color_list[i])
+        g4.append("text")
+         .attr("x", width + 45)
+         .attr("y", 50 + i*20)
+         .attr("text-anchor", "right")
+         .style("font-size", "12px")
+         .text(magna_list[i])
+       }
+
+       g4.append("text")
+          .attr("x", width - 10)
+          .attr("y", height+margin.bottom)
+          .attr("text-anchor", "middle")
+          .style("font-size", "15px")
+          .text("ahutter6")
+
+      })
+
+  </script>
+</body>
