@@ -1,0 +1,269 @@
+-- Setup. DO NOT REMOVE.
+.headers on
+.separator ','
+
+DROP TABLE IF EXISTS sets;
+DROP TABLE IF EXISTS themes;
+DROP TABLE IF EXISTS parts;
+DROP VIEW IF EXISTS top_level_themes;
+DROP VIEW IF EXISTS sets_years;
+DROP TABLE IF EXISTS parts_fts;
+
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (a.i) Create tables
+
+-- [insert your SQL statement(s) BELOW this line]
+CREATE TABLE sets(set_num text, name text, year integer,
+theme_id integer, num_parts integer);
+CREATE TABLE themes(id integer, name text, parent_id integer);
+CREATE TABLE parts(part_num text, name text, part_cat_id integer,
+part_material_id integer);
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+.tables
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (a.ii) Import data
+
+-- [insert your SQLite command(s) BELOW this line]
+.import data/sets.csv sets
+.import data/themes.csv themes
+.import data/parts.csv parts
+
+-- [insert your SQLite command(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+
+.headers off
+SELECT count(*) FROM sqlite_master WHERE type='table' AND name='sets';
+SELECT count(*) FROM sqlite_master WHERE type='table' AND name='parts';
+SELECT count(*) FROM sqlite_master WHERE type='table' AND name='themes';
+.headers on
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (b) Create indexes
+
+-- [insert your SQL statement(s) BELOW this line]
+CREATE INDEX sets_index ON sets(set_num);
+CREATE INDEX parts_index ON parts(part_num);
+CREATE INDEX themes_index ON themes(id);
+
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+
+.indexes
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (c.i) Create the top_level themes VIEW
+
+-- [insert your SQL statement(s) BELOW this line]
+
+
+CREATE VIEW top_level_themes as SELECT id, name
+FROM themes where parent_id = "" OR parent_id IS NULL;
+
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+
+.headers off
+PRAGMA table_info(top_level_themes);
+.headers on
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (c.ii) count the top level themes in the top_level_themes view.
+
+-- [insert your SQL statement(s) BELOW this line]
+SELECT COUNT(id) as count FROM top_level_themes;
+
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (d) Finding top level themes with the most sets.
+
+-- [insert your SQL statement(s) BELOW this line]
+SELECT top_level_themes.name as theme, COUNT(sets.set_num) as num_sets
+FROM top_level_themes
+INNER JOIN sets ON sets.theme_id = top_level_themes.id
+GROUP BY top_level_themes.name
+HAVING COUNT(sets.set_num) >=25
+ORDER BY COUNT(sets.set_num) DESC
+LIMIT 10;
+
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (e) Calculate a percentage
+
+-- [insert your SQL statement(s) BELOW this line]
+CREATE VIEW part_E AS
+SELECT top_level_themes.name as theme, 100.0*COUNT(sets.set_num)/
+(SELECT COUNT(sets.set_num)  FROM
+top_level_themes INNER JOIN sets ON sets.theme_id = top_level_themes.id ) as percentage
+FROM top_level_themes INNER JOIN sets ON sets.theme_id = top_level_themes.id
+GROUP BY top_level_themes.name HAVING percentage >= 5.0 ORDER BY percentage DESC;
+
+select part_E.theme, printf("%.2f",  part_E.percentage) as percentage FROM part_E;
+
+DROP VIEW part_E;
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (f) Summarize a sub-theme
+
+-- [insert your SQL statement(s) BELOW this line]
+
+select themes.name as sub_theme,  COUNT(sets.set_num) as num_sets
+from sets INNER JOIN themes ON  sets.theme_id = themes.id
+INNER JOIN top_level_themes ON  themes.parent_id = top_level_themes.id
+group by sets.theme_id HAVING COUNT(sets.set_num) > 5
+ORDER BY COUNT(sets.set_num) DESC, themes.name ;
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (g.i.) Create the sets VIEW
+
+-- [insert your SQL statement(s) BELOW this line]
+CREATE VIEW sets_years AS
+SELECT rowid, sets.year, COUNT(sets.name) as sets_count
+FROM sets GROUP BY sets.year;
+
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+
+.headers off
+PRAGMA table_info(sets_years);
+SELECT count(*) FROM sqlite_master WHERE type='table' AND name='sets_years';
+.headers on
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (g.ii) Find the running total of sets in the Rebrickable database each year
+
+-- [insert your SQL statement(s) BELOW this line]
+
+SELECT a.year, SUM(b.sets_count) as running_total
+FROM sets_years as a, sets_years as b
+WHERE b.year <= a.year AND a.year >= 1980 AND a.year <= 1989
+GROUP BY a.year
+ORDER BY a.year;
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (h) Create the FTS table and import data.
+
+-- [insert your SQL statement(s) BELOW this line]
+
+create virtual table parts_fts USING
+fts4(part_num text, name text, part_cat_id integer, part_material_id integer);
+
+.import data/parts.csv parts_fts
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+
+.headers off
+PRAGMA table_info(parts_fts);
+.headers on
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (h.i) Count the number of unique parts whose name field begins with the prefix ‘mini’.
+
+-- [insert your SQL statement(s) BELOW this line]
+
+SELECT COUNT(part_num) as count_overview
+FROM parts_fts WHERE name MATCH '^mini*';
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (h.ii) List the part_num’s of the unique parts that contain the terms ‘minidoll’ and ‘boy’ in the name field with no more than 5 intervening terms.
+
+-- [insert your SQL statement(s) BELOW this line]
+
+
+SELECT COUNT(DISTINCT part_num) as total_boy_minidoll
+FROM parts_fts WHERE name MATCH 'minidoll NEAR/5 boy';
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
+
+-- (h.iii) List the part_num’s of the unique parts that contain the terms ‘minidoll’ and ‘girl’ in the name field with no more than 5 intervening terms.
+
+-- [insert your SQL statement(s) BELOW this line]
+
+SELECT COUNT(DISTINCT part_num) as total_girl_minidoll
+FROM parts_fts WHERE name MATCH 'minidoll NEAR/5 girl';
+
+
+
+
+-- [insert your SQL statement(s) ABOVE this line]
+
+-- [the following statement(s) are for autograding. DO NOT REMOVE.]
+.print '~~~~~'
+
+-- ***** ***** ***** ***** ***** ***** ***** ***** ***** ***** --
