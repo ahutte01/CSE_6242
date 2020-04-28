@@ -1,0 +1,32 @@
+@media print {
+  .page {
+    page-break-before: always;
+  }
+}
+
+path {
+  /*fill: none;*/
+  /*stroke: black*/
+}
+
+path.line-3{
+  fill : none;
+  stroke: #FFC300;
+}
+path.line-2{
+  fill : none;
+  stroke: #FF5733;
+}
+path.line-1{
+  fill : none;
+  stroke: #C70039;
+}
+path.line-0{
+  fill: none;
+  stroke: #900C3F;
+}
+
+.dot{
+  fill: #ffab00;
+  stroke: #fff;
+}

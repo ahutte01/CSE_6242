@@ -1,0 +1,4 @@
+We want to use a non-linear scale when our data is non-linear, and there is an
+increasing distance between magnitude of results for each category.
+Unscaled, we can barely see the difference between the 8.0+ earthquake volume
+and 7-7.9 volume. A nonlinear scale allows us to visualize the different results. 
