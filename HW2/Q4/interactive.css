@@ -1,0 +1,47 @@
+
+path {
+  fill: none;
+  stroke: black;
+}
+
+.line {
+  fill: none
+  stroke: #ffab00
+  stroke-width: 3
+}
+
+path.South{
+  fill: none;
+  stroke: blue;
+}
+circle.South{
+  fill: blue;
+  stroke: blue;
+}
+
+path.West{
+  fill: none;
+  stroke: green;
+}
+circle.West{
+  fill: green;
+  stroke: green;
+}
+
+path.Northeast{
+  fill: none;
+  stroke: purple;
+}
+circle.Northeast{
+  fill: purple;
+  stroke: purple;
+}
+
+path.Midwest{
+  fill: none;
+  stroke: red;
+}
+circle.Midwest{
+  fill: red;
+  stroke: red;
+}
