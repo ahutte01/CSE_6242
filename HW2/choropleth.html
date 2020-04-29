@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+  <script type="text/javascript" src="../lib/topojson.v2.min.js"></script>
+  <script type="text/javascript" src="../lib/d3-scale-chromatic.v1.min.js"></script>
+  <script type="text/javascript" src="../lib/d3-simple-slider.min.js"></script>
+  <script type="text/javascript" src="../lib/d3-tip.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="choropleth.css">
+</head>
+<body>
+  Select Year
+  <div id="year-slider"></div>
+
+  <script>
+
+
+  var margin = {top : 50, right : 50, bottom : 50, left : 50}
+  var width = 960 - margin.left - margin.right
+  var height = 500 - margin.top - margin.bottom
+  var svg = d3.select("body")
+              .append("svg")
+              .attr("width", width + margin.left + margin.right)
+              .attr("height", height + margin.top + margin.bottom)
+  var g = svg.append("g")
+             .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+  var slider = d3.sliderHorizontal()
+                  .min(2010)
+                  .max(2015)
+                  .step(1)
+                  .width(300)
+                  .ticks(6)
+                  .tickFormat(d3.format("d"))
+
+
+  var earthquakes = d3.map()
+  var yearSelected = "2010"
+  var years = ["2010", "2011", "2012", "2013", "2014", "2015"]
+
+  var path = d3.geoPath()
+                  .projection(d3.geoAlbersUsa()
+                  .scale(width)
+                  )
+
+
+
+  var logScale
+  var colorScale = d3.scaleThreshold()
+                     .domain(d3.range(2,10))
+                     .range(d3.schemePurples[9])
+
+  var promises = [
+    d3.json("states-10m.json"),
+    d3.dsv(",", "state-earthquakes.csv"
+  )]
+
+  Promise.all(promises).then(ready)
+
+  function ready(results) {
+
+    var us = results[0]
+    var csvData = results[1]
+
+    var tip = d3.tip()
+                .attr('class', 'd3-tip')
+                .html(function(d) {
+                  for (var i =0; i < csvData.length; i++){
+                    if (d.properties.name == csvData[i]["States"]){
+                      var state = csvData[i]["States"]
+                      var region = csvData[i]["Region"]
+                      var year = yearSelected
+                      var count = csvData[i][yearSelected]
+                    }
+                  }
+                  return "<div class='tooltip'>"
+                      + "State: " +state + "<br>"
+                      + "Region: " + region + "<br>"
+                      + "Year: " + year + "<br>"
+                      + "Earthquakes: " + count + "</div>"
+                })
+
+    slider.displayValue(false)
+          .on('onchange', function(val) {
+            yearSelected = val+""
+            d3.select("#year-slider")
+              .selectAll("svg")
+              .remove()
+            ready(results)
+          })
+
+    d3.select("#year-slider")
+      .append("svg")
+      .attr("width", 500)
+      .attr("height", 100)
+      .append("g")
+      .attr("transform", "translate(30, 30)")
+      .call(slider)
+
+    var maxVal = -Infinity
+    var minVal = +Infinity
+    for (var i = 0; i < csvData.length; i++){
+        var key = csvData[i]["States"]
+        var val = Number(csvData[i][yearSelected])
+        earthquakes.set(key, val)
+
+        if (val > maxVal){
+          maxVal = val
+        }
+
+        if (val < minVal){
+          minVal = val
+        }
+    }
+
+    logScale = d3.scaleLog()
+                .clamp(true)
+               .domain([ "1e-1", maxVal ] )
+               .range([1,9])
+
+    svg.selectAll("g")
+       .remove()
+
+    svg.call(tip)
+    var g = svg.append("g")
+
+    var states = g.selectAll("path")
+       .data(topojson.feature(us, us.objects.states).features)
+       .enter()
+
+    states.append("path")
+        .attr("fill", function(d) {
+          return (colorScale(logScale(earthquakes.get(d.properties.name))))
+        })
+        .attr("d", path)
+        .on('mouseover', tip.show)
+        .on('mouseout', tip.hide)
+        .append("title")
+        .text(function (d) {
+          return earthquakes.get(d.properties.name)}
+        )
+
+     g.append("path")
+      .datum(topojson.mesh(us, us.objects.states, function(a,b) {return a !== b}))
+      .attr("class", "states")
+      .attr("d", path)
+
+     g.append("path")
+     .datum(topojson.mesh(us, us.objects.nation))
+     .attr("class", "nations")
+     .attr("d", path)
+
+    var rectHeight = 20
+    var rectWidth = 20
+    var barPadding = 5
+    var legend = g.selectAll("rect")
+      .data(colorScale.range().map(function(d) {
+        d = colorScale.invertExtent(d)
+        if (d[0] == null) d[0] = logScale.domain()[0]
+        if (d[1] == null) d[1] = logScale.domain()[1]
+        return d
+      }))
+      .enter()
+      .append("g")
+
+    legend.append("rect")
+      .attr("height", rectHeight)
+      .attr("x", width - 50 )
+      .attr("y", function(d, i){
+        return (2+i)*(rectHeight + barPadding)
+      })
+      .attr("width", rectWidth)
+      .attr("fill", function(d) {return colorScale(d[0]) } )
+
+    legend.append("text")
+      .attr("x", width - 20)
+      .attr("y", function(d, i){
+        return(2.6+i)*(rectHeight + barPadding)
+      })
+      .text(function(d) {
+        var lower = Math.round(logScale.invert(d[0]))
+        var upper = Math.round(logScale.invert(d[1]))
+        if (lower === 0 && upper === lower) return 0
+        if (lower + 1 === upper) return lower+1
+        if (upper === lower) return upper + "+"
+        return (lower+1) + "-" + upper
+      })
+
+    g.append("text")
+     .attr("class", "caption")
+     .attr("x", width-75)
+     .attr("y", 30)
+     .attr("fill", "#000")
+     .attr("text-anchor", "start")
+     .attr("font-weight", "bold")
+     .text("Earthquake Count")
+
+    g.append("text")
+         .attr("x", width - 10)
+         .attr("y", height+margin.bottom)
+         .attr("text-anchor", "middle")
+         .style("font-size", "15px")
+         .text("ahutter6")
+  }
+
+
+  </script>
+</body>
