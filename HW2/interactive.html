@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+<link rel="stylesheet" type="text/css" href="interactive.css">
+<style>
+</style>
+<body>
+  <script>
+
+  const margin = {top : 50, right : 100, bottom : 50, left : 100}
+  const width = 960 - margin.left - margin.right
+  const height = 500 - margin.top - margin.bottom
+
+  var svg = d3.select("body")
+              .append("svg")
+              .attr("width", width + margin.left + margin.right)
+              .attr("height", height + margin.top + margin.bottom)
+  var g = svg.append("g")
+             .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+
+
+  d3.dsv("," , "state-year-earthquakes.csv")
+    .then(function(data) {
+      return data.map(function(d) {
+       return {
+         state: d.state,
+         region: d.region,
+         year: new Date(+d.year,0,1),
+         count: +d.count
+       }
+     })
+    })
+    .then(function(data){
+
+      var nestedData = d3.nest()
+                         .key(function(d) {return d.region})
+                         .key(function(d) {return d.year})
+                         .rollup(function (leaves) {
+                           return d3.sum(leaves, function(d) {
+                             return d.count
+                           })
+                         })
+                         .entries(data)
+      //console.log(data)
+      //console.log(nestedData)
+      //console.log(nestedData[0]["values"][0]["value"])
+
+      var maxVal = 0
+      for (var i = 0; i < nestedData.length; i++){
+        for (var j = 0; j < nestedData[i]["values"].length; j++){
+          if (nestedData[i]["values"][j]["value"] > maxVal){
+            maxVal = nestedData[i]["values"][j]["value"]
+          }
+        }
+      }
+
+      // ----- Create Axis Scales
+      var xScale = d3.scaleTime()
+                     .range([0, width])
+                     .domain([d3.min(data, function(d) {return d.year}),
+                           d3.max(data, function(d) {return d.year})])
+      var yScale = d3.scaleLinear()
+                     .range([height, 0])
+                     .domain([0, maxVal])
+
+      // ----- Add Axes
+      g.append("g")
+       .call(d3.axisBottom().scale(xScale).ticks(d3.timeYear.every(1)))
+       .attr("transform", "translate(0," + height + ")")
+
+      g.append("g")
+        .call(d3.axisLeft().scale(yScale).ticks(15))
+
+      // ----- Line generation
+      var lineGenerator = d3.line()
+                            .x(function(d) {return xScale(new Date(d.key)) + margin.left }  )
+                            .y(function(d) {return yScale(d.value) + margin.top} )
+
+      nestedData.forEach(function(d) {
+        var region = d.key
+        svg.append("path")
+           .attr("class", function(d) {
+               return region
+           })
+           .attr("d", lineGenerator(d.values))
+      })
+
+
+      /*console.log(nestedData)
+      console.log(nestedData[0].key)
+      console.log(nestedData[0].values)
+      console.log(nestedData[0].values[0])
+      console.log(nestedData[0].values[0].key)
+      console.log(nestedData[0].values[0].value)*/
+
+      color_list = ['blue', 'green', 'purple', 'red']
+      for (var i = 0; i < nestedData.length; i++){
+        for (var j = 0; j < nestedData[i].values.length; j++) {
+        var cx = xScale(new Date(nestedData[i].values[j].key)) + margin.left
+        var cy = yScale(nestedData[i].values[j].value) + margin.top
+        var color = color_list[i]
+
+        console.log("the key is", nestedData[i].key)
+        console.log("the color of circle is:", color_list[i])
+        svg.append("circle")
+           .attr("cx", cx)
+           .attr("cy", cy)
+           .attr("r", 5) // how to reference class here based on key?
+           .attr("fill", color_list[i])
+         }
+      }
+
+      // ----- Title
+      svg.append("text")
+           .attr("x", (width+margin.left+margin.right)/2)
+           .attr("y", 0 + margin.top)
+           .attr("text-anchor", "middle")
+           .style("font-weight", 700)
+           .style("font-size", "18px")
+           .style("font-family", "sans-serif")
+           .text("US Earthquakes by Region 2011 - 2015")
+      svg.append("text")
+          .attr("x", (width+margin.left+margin.right)/2)
+          .attr("y", 0 + margin.top + 40)
+          .attr("text-anchor", "middle")
+          .style("font-weight", 700)
+          .style("font-size", "12px")
+          .style("font-family", "sans-serif")
+          .text("ahutter6")
+
+    })
+    
+    // Legend
+        var region_list = ["South", "West", "Northeast", "Midwest"]
+        var color_list = ["blue","green","purple", "red"]
+        for (var i = 0; i < color_list.length; i++) {
+          g.append("circle")
+            .attr("cx", width + 10)
+            .attr("cy", 42 + i*20)
+            .attr("r", 6)
+            .attr("fill", color_list[i])
+          g.append("text")
+           .attr("x", width + 35)
+           .attr("y", 45 + i*20)
+           .attr("text-anchor", "right")
+           .style("font-size", "12px")
+           .text(region_list[i])
+        }
+
+  </script>
+</body>
