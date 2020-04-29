@@ -1,0 +1,22 @@
+.states {
+  fill: none;
+  stroke: #aaa;
+  stroke-width: 0.5px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.nations {
+  fill: none;
+  stroke: #000;
+  stroke-width: 0.5px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.tooltip{
+  color: white;
+  background-color: black;
+  padding: 8px;
+  border-radius: 4px;
+}
