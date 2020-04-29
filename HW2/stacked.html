@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<script type="text/javascript" src="../lib/d3.v5.min.js"></script>
+<link rel="stylesheet" type="text/css" href="stacked.css">
+<style>
+</style>
+<body>
+  Select Year
+  <select id="year-container"></select>
+  <div id="chart"></div>
+
+  <script>
+
+
+  var margin = {top : 50, right : 100, bottom : 50, left : 100}
+  var width = 960 - margin.left - margin.right
+  var height = 500 - margin.top - margin.bottom
+  var barPadding = 10
+  var svg = d3.select("#chart")
+              .append("svg")
+              .attr("width", width + margin.left + margin.right)
+              .attr("height", height + margin.top + margin.bottom)
+  var g = svg.append("g")
+             .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+  var xScale
+  var yScale
+  var colorScale
+  var maxVal = 0
+  var keys
+  var years
+  var states
+  var currentYear
+  var currentData
+  var stack
+  var stackedData
+  var data2017
+  var data2018
+  var dataYear = []
+  var color_list = ['#b33040','#d25c4d', '#f2b447']
+
+function readData() {
+  return d3.dsv("," , "earthquake.csv")
+    .then(function(data){
+      console.log(data)
+      data2017 = []
+      data2018 = []
+      for (var i = 0; i < data.length; i++){
+        if (dataYear[data[i].Year] == undefined){
+          dataYear[data[i].Year] = []
+        }
+        dataYear[data[i].Year].push(data[i])
+        /*if (data[i].Year === "2017"){
+          data2017.push(data[i])
+        } else {
+          data2018.push(data[i])
+        }*/
+      }
+      //console.log(data2017)
+      //console.log(data2018)
+
+      years = new Set( data.map(function(d) {return d.Year } ) )
+      states = [new Set( data.map(function(d) {return d.State} ) )]
+      console.log(states)
+      keys = data.columns.slice(2)
+
+
+
+        })
+
+}
+
+function updateChart() {
+
+        // ----- Create Chart Using 2017 Data --------------------
+
+        console.log(this)
+        d3.selectAll("svg")
+          .selectAll("rect")
+          .remove()
+
+        d3.selectAll("svg")
+          .selectAll("text")
+          .remove()
+
+        d3.selectAll("svg")
+          .selectAll(".tick")
+          .remove()
+
+        if (event && event.target && event.target.value){
+          currentYear = event.target.value
+          currentData = dataYear[currentYear]
+        } else {
+          currentYear = "2017"
+          currentData = dataYear[currentYear]
+        }
+        console.log(currentData)
+
+        // ----- Clean Data into Integers
+        currentData = currentData.map(function(d) {
+         return {
+           year: +d.Year,
+           state: d.State,
+           "7.0+" : +d["7.0+"],
+           "6_6.9": +d["6_6.9"],
+           "5_5.9": +d["5_5.9"]
+         }
+       })
+        stack = d3.stack()
+          .keys(["7.0+", "6_6.9", "5_5.9"])
+        stackedData = stack(currentData);
+        //console.log(stackedData)
+        //console.log(stackedData[0])
+
+        // ------ Get max for Y Axis
+        console.log(maxVal)
+        maxVal = 0
+        for (var i = 0; i < currentData.length; i++){
+            newVal = currentData[i]['7.0+'] + currentData[i]['6_6.9'] + currentData[i]['5_5.9']
+            if (newVal > maxVal){
+              maxVal = newVal
+            }
+        }
+        console.log(maxVal)
+        // ----- Axes
+        xScale = d3.scaleBand()
+                       .range([0, width])
+                       //.domain(states)
+                       .domain(['AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT'])
+        yScale = d3.scaleLinear()
+                       .range([height, 0])
+                       .domain([0, maxVal+50])
+        colorScale = d3.scaleOrdinal()
+                          .range(['#b33040','#d25c4d', '#f2b447'])
+                          .domain(keys)
+
+        g.append("g")
+          .call(d3.axisBottom().scale(xScale))
+          .attr("transform", "translate(0," + height + ")")
+        g.append("g")
+           .call(d3.axisLeft().scale(yScale).ticks(15))
+
+       // ----- Use Stack to add Rectangles by state
+       for (var i = 0; i < stackedData.length; i++){
+         var key = stackedData[i].key
+         for (var j = 0; j < stackedData[i].length; j++){
+           var y0 = stackedData[i][j][0]
+           var y1 = stackedData[i][j][1]
+
+           svg.append("rect")
+              .attr("x", (j*(width /currentData.length)+ margin.left )
+                  )
+              .attr("y", yScale(y1)+margin.top)
+              .attr("width", width / currentData.length - barPadding )
+              .attr("height", yScale(y0) - yScale(y1))
+              .attr("fill", function(d) { return colorScale(key)})
+
+              if (i == stackedData.length - 1 ){
+              svg.append("text")
+                 .attr("x", (j*(width /currentData.length))+35+ margin.left)
+                 .attr("y", yScale(y1)+margin.top-3)
+                 .style("font-family", "sans-serif")
+                 .style("font-size", "15px")
+                 .text(y1)
+              }
+            }
+
+           }
+           // ----- Standard Titles
+           svg.append("text")
+                .attr("x", (width+margin.left+margin.right)/2)
+                .attr("y", 0 + margin.top/2)
+                .attr("text-anchor", "middle")
+                //.style("font-weight", 700)
+                .style("font-size", "20px")
+                .style("font-family", "sans-serif")
+                .text("Visualizing Earthquake Counts by State")
+           g.append("text")
+               .attr("x", width - 10)
+               .attr("y", height+margin.bottom)
+               .attr("text-anchor", "middle")
+               .style("font-size", "15px")
+               .text("ahutter6")
+           g.append("text")
+               .attr("x", width/2)
+               .attr("y", height+ (margin.bottom*.75))
+               .attr("text-anchor", "middle")
+               .style("font-size", "15px")
+               .text("State")
+           g.append("text")
+               .attr("x", -(height)/2)
+               .attr("y", -(margin.left/2))
+               .attr("transform", "rotate(-90)")
+               .attr("text-anchor", "middle")
+               .style("font-size", "15px")
+               .text("Number of Earthquakes")
+
+     // Legend
+
+         for (var i = 0; i < color_list.length; i++) {
+           g.append("circle")
+             .attr("cx", width + 10)
+             .attr("cy", 42 + i*20)
+             .attr("r", 6)
+             .attr("fill", color_list[i])
+           g.append("text")
+            .attr("x", width + 35)
+            .attr("y", 45 + i*20)
+            .attr("text-anchor", "right")
+            .style("font-size", "12px")
+            .text(keys[i])
+          console.log(keys[i])
+         }
+
+}
+
+
+      readData()
+      .then(function() {
+        updateChart()
+
+        var yearDropDown = d3.select("#year-container")
+          .on("change", updateChart)
+
+        yearDropDown.selectAll("option")
+                    .data(Array.from(years))
+                    .enter()
+                    .append("option")
+                    .attr("value", function(d) {return d
+                    })
+                    .text(function(d) {return d})
+
+      })
+
+
+
+
+
+
+
+
+
+
+  </script>
+</body>
