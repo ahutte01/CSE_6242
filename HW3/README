@@ -1,0 +1,11 @@
+Q1: Use Hadoop & Java to analyze trip data. Using a Virtual Machine, use NYC Taxi and Limousine Comission data. 
+    Use Map-Reduce algorithm to handle problems. 
+    For each pickup ID, count up the total trips and the total fare. 
+Q2: Use Spark & Scala to analyze a dataset on Databricks. 
+    Analyze the NYC-TripData.csv from NYC Green Taxi Data. 
+    Use Scala Dataframe objects to analyze the questions.
+Q3: AWS & Pig question, removed due to liscense access issues for class 
+Q4: Use Hadoop & Microsoft Azure to analyze trip data. 
+   4a: Use Map-Reduce to compute difference of outdegree value for each pickup id location 
+   4b: Use Map-Reduce to compute average fare for different passenger count 
+Q5: Use Azure ML Studio to analyze a Regression Automobile Price Prediction Model 
