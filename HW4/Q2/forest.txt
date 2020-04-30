@@ -1,0 +1,9 @@
+1) Random forests are better than decision trees because
+each tree is a different sample and reduces the error.
+Each different tree starts from a different split on
+a sample of data, allowing more possibilities, as if
+we had a bigger data set, and better boundaries.
+
+2) Run time is around 110 seconds
+
+3) Accuracy is around 71.42%
