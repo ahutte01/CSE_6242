@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Flood Hazards And House Price Adjustment</title>
+
+    <!-- CSS sheet from ArcGIS -->
+    <link rel = "stylesheet"
+          href = "https://js.arcgis.com/4.14/esri/themes/light/main.css"
+    />
+
+    <!-- ArcGIS 4.14 Javascript API-->
+    <script type = "text/javascript" src = "/lib/d3.v5.min.js"></script>
+    <script src = "https://js.arcgis.com/4.14/"></script>
+    <!---D3-->
+    <!--<script type = "text/javascript" src = "https://d3js.org/d3.v5.min.js"></script>-->
+   <!-- Typical div styling from ArcGIS examples -->
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+
+      .esri-popup__main-container.esri-widget {
+      width: 500px !important;
+      max-height: 500px !important;
+    }
+
+    </style>
+
+    <!-- Main javascript -->
+    <script>
+      //References
+      //Flood map codes: https://www.premierflood.com/flood-zone-rate-maps.html
+      //                 https://www.fema.gov/insurance-professionals-lenders-frequently-asked-questions
+      //                 https://snmapmod.snco.us/fmm/document/fema-flood-zone-definitions.pdf
+      //Flood map premiums: https://www.valuepenguin.com/flood-insurance/flood-zones-affect-insurance-premiums
+      //Popup templates: https://developers.arcgis.com/javascript/latest/sample-code/sandbox/index.html?sample=popuptemplate-function
+      //                https://developers.arcgis.com/javascript/latest/api-reference/esri-PopupTemplate.html
+      //Map example: https://developers.arcgis.com/javascript/3/jssamples/styling_svg_quantize.html
+      //Points on a map: https://developers.arcgis.com/javascript/3/jssamples/layers_csv.html
+
+      //Load esri libraries
+      require(["esri/Map",
+               "esri/views/MapView",
+               "esri/layers/FeatureLayer",
+               "esri/popup/content/TextContent",
+               "esri/PopupTemplate",
+               "esri/widgets/Legend",
+               "esri/layers/CSVLayer",
+               "esri/geometry/Point",
+               "esri/geometry/Multipoint",
+               "esri/layers/support/Field"],
+               function(Map, MapView, FeatureLayer,
+                        TextContent, PopupTemplate,
+                        Legend, CSVLayer, Multipoint, Field) {
+
+                 //Generate the map
+                 //////////////////////////////////////////////////
+                 var map = new Map({basemap: "topo-vector"});
+
+                 //Set the parameters for the view
+                 var view = new MapView({container: "viewDiv",
+                                         map: map,
+                                         //Initial centering of the map
+                                         center: [-73.20, 40.79],
+                                         //Initial zoom level of the map
+                                         zoom: 11});
+
+                 //Set the popup messages
+                 //////////////////////////////////////////////////
+                 //Extract fields from the feature layer for flood zones
+                 //esri_symbology provides the 1%/.2% risk level
+                 var fema_popup_text;
+                 var zip_popup_text;
+
+                 var fema_popup = {title: "Flood risk: {esri_symbology}",
+                                   outFields: ["*"],
+                                   content: fema_popup_text,
+                                   //FLD_ZONE: The primary zone
+                                   //SFHA_TF: special flood hazard
+                                   //More fields can be found in thet feature layer url
+                                   fieldInfos: [{fieldName: "FLD_ZONE"},
+                                                {fieldName: "SFHA_TF"}]};
+
+                 var zip_popup = {title: "Zip code: {ZCTA5CE} | Adjustment to the Zillow Estimate",
+                                  outFields: ["*"],
+                                  content: zip_popup_text,
+                                  fieldInfos: [{fieldName: "ZHVI"},
+                                               {fieldName: "PRED_PR"},
+                                               {fieldName: "PrcntCh"},
+                                               {fieldName: "ZCTA5CE"},
+                                               {fieldName: "COASTAL"},
+                                               {fieldName: "zp_nmbr"},
+                                               {fieldName: "DaysTSl"}]};
+
+                 //Function for dynamically setting the FEMA popup
+                 function fema_popup_text(feature) {
+                   var div = document.createElement("div");
+                   var premium = "";
+                   if (feature.graphic.attributes.FLD_ZONE == "VE") {
+                     premium = "$6,500";
+                   };
+                   div.innerHTML =
+                   "This area is in flood zone <b>" +
+                   feature.graphic.attributes.FLD_ZONE +
+                   "</b> and has special flood hazard designation <b>" +
+                   feature.graphic.attributes.SFHA_TF + "." +
+                   "</b> The expected annual premium for a home in this area is <b>" +
+                   premium + "</b>." +
+                   " There is a <b>26%</b> chance of experiencing a severe flood over the life of a 30 year mortgage."
+
+                   return div;
+                 };
+
+                 //Function for dynamically setting the zip popup
+                 function zip_popup_text(feature) {
+                   var div = document.createElement("div");
+                   var sea_level_gauge = "";
+                   var sea_level_image = "";
+                   var sea_level_message = "<br>Below is the sea level rise for this area:";
+                   //NYC
+                   if ((feature.graphic.attributes.zp_nmbr >= 10000) &
+                       ((feature.graphic.attributes.zp_nmbr < 12000))) {
+                          sea_level_gauge = "8518750";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+                   //Long Island
+                   if ((feature.graphic.attributes.zp_nmbr >= 11700) &
+                       ((feature.graphic.attributes.zp_nmbr <= 12000))) {
+                          sea_level_gauge = "8510560";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+                   //Washington, DC
+                   if ((feature.graphic.attributes.zp_nmbr >= 20000) &
+                       ((feature.graphic.attributes.zp_nmbr <= 23000))) {
+                          sea_level_gauge = "8594900";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+
+                   //Wilmington, North Carolina
+                   if ((feature.graphic.attributes.zp_nmbr >= 28500) &
+                       ((feature.graphic.attributes.zp_nmbr <= 29500))) {
+                          sea_level_gauge = "8658120";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+                   //Miami
+                   if ((feature.graphic.attributes.zp_nmbr >= 33000) &
+                       ((feature.graphic.attributes.zp_nmbr <= 33500))) {
+                          sea_level_gauge = "8723170";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+                   //Alabama
+                   if ((feature.graphic.attributes.zp_nmbr >= 36000) &
+                       ((feature.graphic.attributes.zp_nmbr <= 37000))) {
+                          sea_level_gauge = "8735180";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+                   //San Antonio
+                   if ((feature.graphic.attributes.zp_nmbr >= 77900) &
+                       ((feature.graphic.attributes.zp_nmbr <= 78000))) {
+                          sea_level_gauge = "8771510";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+                   //Los Angeles/San Diego
+                   if ((feature.graphic.attributes.zp_nmbr >= 90000) &
+                       ((feature.graphic.attributes.zp_nmbr <= 95000))) {
+                          sea_level_gauge = "9410660";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+                   //Eureka, CA
+                   if ((feature.graphic.attributes.zp_nmbr >= 95000) &
+                       ((feature.graphic.attributes.zp_nmbr <= 96000))) {
+                          sea_level_gauge = "9414290";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+                   //Seattle, WA
+                   if ((feature.graphic.attributes.zp_nmbr >= 98000) &
+                       ((feature.graphic.attributes.zp_nmbr <= 99000))) {
+                          sea_level_gauge = "9447130";
+                          sea_level_image = sea_level_message + "<img alt='picture' src = 'https://tidesandcurrents.noaa.gov/sltrends/plots/" + sea_level_gauge + "_meantrend.png'/>"
+                   };
+
+                   div.innerHTML =
+                   "Zillow predicted this zip code to have a median price of <b>" +
+                   feature.graphic.attributes.ZHVI +
+                   "</b>, but due to nearby flood hazard our model shows the median price is closer to <b>" +
+                   feature.graphic.attributes.PRED_PR + "." +
+                   "</b> This represents a <b>" +
+                   feature.graphic.attributes.PrcntCh +
+                   "%</b> change to Zillow's estimate." +
+                   "The following factors contribute to our model result for this zip code:<br>" +
+                   "<b>Total recent flood events: </b>" + feature.graphic.attributes.COASTAL + "<br>" +
+                   "<b>Average days to sale: </b>" + feature.graphic.attributes.DaysTSl + "<br>" +
+                   sea_level_image
+
+                   return div;
+                 }
+
+                    //Feature layers
+                    //////////////////////////////////////////////////
+                    //FEMA flood zones
+                    var featureLayerFEMA = new FeatureLayer({url: "https://services.arcgis.com/P3ePLMYs2RVChkJx/arcgis/rest/services/USA_Flood_Hazard_Reduced_Set_gdb/FeatureServer/0",
+                                                            popupTemplate: fema_popup});
+                    var zipCodes = new FeatureLayer({url: "https://services5.arcgis.com/JLMkQwHCGsEkKX5N/arcgis/rest/services/zip_shapes/FeatureServer/0?token=Ynb5DlWJtRHyxbLGOsoF5ZbKdN08W1CPWb7ZYL59xxUKm23ZIwx2leCbguKoCvERq2cpuPEuvX9_X4MY85YOPsubMoMkwu07C9I-EffbuJ1gKzZU8WL8RRIY0SJ_lmWVBv9SsMPZ4vJwyFSrcL2OS4U04o2UuAwnxR7fHjWs4LCYACcnbTgpcZL_AlKPjPU1gQKW3PqsfTwRkC40eeXiG3J2W2_GBO_doqNi8bI7HR8uy8hqZku9v3ar4fv88xEl",
+                                                     popupTemplate: zip_popup});
+
+                    //Add the feature layers to the map
+                    map.add(zipCodes);
+                    map.add(featureLayerFEMA);
+
+                    // Create a variable referencing the checkbox node
+                    var fema_toggle = document.getElementById("fema_check_box");
+                    var zip_toggle = document.getElementById("zip_check_box");
+
+                    //Check boxes for layer visibility
+                    fema_toggle.addEventListener("change", function() {
+                      featureLayerFEMA.visible = fema_toggle.checked;
+                    });
+
+                    zip_toggle.addEventListener("change", function() {
+                      zipCodes.visible = zip_toggle.checked;
+                    });
+
+                  });
+    </script>
+  </head>
+
+  <body>
+    <p>Choose map layers:
+      <input type = "checkbox" class = "list_item" id = "fema_check_box" checked = "True" />FEMA Flood Maps
+      <input type = "checkbox" class = "list_item" id = "zip_check_box" checked = "True" />Coastal Zip Codes
+    </p> <span id="layer_list">
+    </span>
+    <div id = "viewDiv"></div>
+  </body>
+</html>
